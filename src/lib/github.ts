@@ -62,7 +62,7 @@ export const pollCommits = async (projectId: string) => {
                 commitMessage: unprocessedCommits[index]!.commitMessage,
                 commitAuthorName: unprocessedCommits[index]!.commitAuthorName,
                 commitAuthorAvatar: unprocessedCommits[index]!.commitAuthorAvatar,
-                commitDate: unprocessedCommits[index]?.commitDate,
+                commitDate: new Date(unprocessedCommits[index]!.commitDate),
                 summary
             }
         })
@@ -103,4 +103,3 @@ async function filterUnprocessCommits(projectId: string, commitHashes: Response[
     return unprocessedCommits
 }
 
-await pollCommits('cmf0xpmet0000f0zpqygtzxw5').then(console.log)
