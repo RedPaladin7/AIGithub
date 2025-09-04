@@ -3,7 +3,7 @@ import { Document } from '@langchain/core/documents'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash'
+    model: 'gemini-2.5-flash'
 })
 
 export const aiSummariseCommit = async (diff: string) => {
@@ -43,20 +43,34 @@ export const aiSummariseCommit = async (diff: string) => {
     return response.response.text()
 }
 
-export async function summariseCode(doc: Document){
-    console.log('getting summary for', doc.metadata.source)
+export async function summariseCode(doc: Document) {
+  console.log("getting summary for", doc.metadata.source)
+  try {
     const code = doc.pageContent.slice(0, 10000)
-    const response = await model.generateContent([
-        `You are an intelligent senior software engineer who specialises in onboarding junior software engineers into projects.`,
-        `You are obooarding a junior software engineer and explaining to them the purpose of ${doc.metadata.source} file.
-        Here is the code: 
-        ---
-        ${code}
-        ---
-        Give a summary no more than 100 words of the code above`,
-    ])
 
-    return response.response.text()
+    if (!code.trim()) {
+      console.warn("No code found in document")
+      return ""
+    }
+
+    const prompt = `
+      You are an intelligent senior software engineer helping onboard a junior engineer.
+      Explain the purpose of the file: ${doc.metadata.source}.
+      Here is the code:
+      ---
+      ${code}
+      ---
+      Give a concise summary in no more than 100 words.
+    `
+
+    const result = await model.generateContent(prompt)
+
+    const summary = result.response.text()
+    return summary.trim()
+  } catch (error) {
+    console.error("Error in summariseCode:", error)
+    return ""
+  }
 }
 
 export async function generateEmbedding(summary: string) {
