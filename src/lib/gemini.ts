@@ -3,12 +3,12 @@ import { Document } from '@langchain/core/documents'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash'
+    model: 'gemini-1.5-flash'
 })
 
 export const aiSummariseCommit = async (diff: string) => {
     const response = await model.generateContent([
-        `You are an expert programer, and you are trying to summarise a git diff. Explain all the changes you find in detail for every single line in the diff.
+        `You are an expert programer, and you are trying to summarise a git diff. Explain all the changes you find in detail.
         Reminders about the git diff format:
         For every file. there are a few metadata lines, like (for example):
         \`\`\`
@@ -44,6 +44,9 @@ export const aiSummariseCommit = async (diff: string) => {
 }
 
 export async function summariseCode(doc: Document) {
+  const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash'
+  })
   console.log("getting summary for", doc.metadata.source)
   try {
     const code = doc.pageContent.slice(0, 10000)
@@ -74,10 +77,24 @@ export async function summariseCode(doc: Document) {
 }
 
 export async function generateEmbedding(summary: string) {
-    const model = genAI.getGenerativeModel({
-        model: 'text-embedding-004'
-    })
-    const result = await model.embedContent(summary)
-    const embedding = result.embedding
-    return embedding.values
+  const model = genAI.getGenerativeModel({
+    model: "text-embedding-004",
+  });
+
+  const result = await model.embedContent({
+    content: {
+      role: "user",
+      parts: [
+        {
+          text: summary, // plain text field directly, no data wrapper
+        },
+      ],
+    },
+  });
+
+  return result.embedding.values;
 }
+
+
+
+
