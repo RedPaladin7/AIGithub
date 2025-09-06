@@ -16,38 +16,51 @@ export const loadGithubRepo = async (githubUrl: string, githubToken?: string) =>
     return docs
 }
 
-export const indexGithubRepo = async(projectId: string, githubUrl: string, githubToken?: string) => {
-    const docs = await loadGithubRepo(githubUrl, githubToken)
-    const allEmbeddings = await generateEmbeddings(docs)
-    await Promise.allSettled(allEmbeddings.map( async (embedding, index)=>{
-        console.log(`processing ${index} of ${allEmbeddings.length}`)
-        if(!embedding) return 
-
-        const sourceCodeEmbedding = await db.sourceCodeEmbedding.create({
-            data: {
-                summary: embedding.summary,
-                sourceCode: embedding.sourceCode,
-                fileName: embedding.filename,
-                projectId: projectId
-            }
-        })
-        await db.$executeRaw`
+export const indexGithubRepo = async (
+  projectId: string,
+  githubUrl: string,
+  githubToken?: string
+) => {
+  const docs = await loadGithubRepo(githubUrl, githubToken);
+  const allEmbeddings = await generateEmbeddings(docs);
+  await Promise.allSettled(
+    allEmbeddings.map(async (embedding, index) => {
+      if (!embedding) return;
+      console.log(`processing ${index} of ${allEmbeddings.length}`);
+      const sourceCodeEmbedding = await db.sourceCodeEmbedding.create({
+        data: {
+          summary: embedding.summary,
+          sourceCode: embedding.sourceCode,
+          fileName: embedding.filename,
+          projectId: projectId,
+        },
+      });
+      await db.$executeRaw`
         UPDATE "SourceCodeEmbedding"
         SET "summaryEmbedding" = ${embedding.embedding}::vector
         WHERE "id" = ${sourceCodeEmbedding.id}
-        `
-    }))
-}
+      `;
+    })
+  );
+};
+
 
 const generateEmbeddings = async (docs: Document[]) => {
-    return await Promise.all(docs.map(async doc => {
-        const summary = await summariseCode(doc)
-        const embedding = await generateEmbedding(summary)
-        return {
-            summary, 
-            embedding,
-            sourceCode: JSON.parse(JSON.stringify(doc.pageContent)),
-            filename: doc.metadata.source
-        }
-    }))
-}
+  const results = [];
+  for (const doc of docs) {
+    try {
+      const summary = await summariseCode(doc);
+      const embedding = await generateEmbedding(summary);
+      results.push({
+        summary,
+        embedding,
+        sourceCode: JSON.parse(JSON.stringify(doc.pageContent)),
+        filename: doc.metadata.source,
+      });
+    } catch (error) {
+      console.error(`Error processing file ${doc.metadata.source}:`, error);
+      results.push(null);
+    }
+  }
+  return results;
+};
