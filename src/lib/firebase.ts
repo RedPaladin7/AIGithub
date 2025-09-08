@@ -37,7 +37,7 @@ export async function uploadFile(file: File, setProgress?: (progress: number)=>v
                 reject(error)
             }, ()=>{
                 getDownloadURL(uploadTask.snapshot.ref).then(downloadUrl=>{
-                    resolve(downloadUrl)
+                    resolve(downloadUrl as string)
                 })
             })
         } catch(error){

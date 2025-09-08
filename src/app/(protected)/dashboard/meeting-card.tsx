@@ -7,10 +7,27 @@ import { Presentation, Upload } from 'lucide-react'
 import React, { useState } from 'react'
 import {useDropzone} from 'react-dropzone'
 import {CircularProgressbar, buildStyles} from 'react-circular-progressbar'
+import { api } from '@/trpc/react'
+import { projectCompilationEventsSubscribe } from 'next/dist/build/swc/generated-native'
+import useProject from '@/hooks/use-project'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { useMutation } from '@tanstack/react-query'
+import axios from 'axios'
 
 const MeetingCard = () => {
+    const {project} = useProject()
+    const processMeeting = useMutation({mutationFn: async (data: {meetingUrl: string,
+        meetingId: string, projectId: string}
+    )=>{
+        const {meetingUrl, meetingId, projectId} = data
+        const response = await axios.post('/api/process-meeting', {meetingUrl, meetingId, projectId})
+        return response.data
+    }})
+    const router = useRouter()
     const [progress, setProgress] = useState(0)
     const [isUploading, setIsUploading] = useState(false)
+    const uploadMeeting = api.project.uploadMeeting.useMutation()
     const {getRootProps, getInputProps} = useDropzone({
         accept: {
             'audio/*': ['.mp3', '.wav', '.m4a']
@@ -18,9 +35,29 @@ const MeetingCard = () => {
         multiple: false,
         maxSize: 50_000_000,
         onDrop: async acceptedFiles => {
+            if(!project) return
             setIsUploading(true)
             const file = acceptedFiles[0]
-            const downloadUrl = await uploadFile(file as File, setProgress)
+            if(!file) return
+            const downloadUrl = await uploadFile(file as File, setProgress) as string
+            uploadMeeting.mutate({
+                projectId: project.id,
+                meetingUrl: downloadUrl,
+                name: file.name
+            }, {
+                onSuccess: ()=>{
+                    toast.success('Meeting uploaded successfully')
+                    router.push('/meetings')
+                    processMeeting.mutateAsync({
+                        meetingUrl: downloadUrl,
+                        meetingId: project.id,
+                        projectId: project.id
+                    })
+                },
+                onError: ()=>{
+                    toast.error('Error uplaoding meeting')
+                }
+            })
             setIsUploading(false)
         }
     })
