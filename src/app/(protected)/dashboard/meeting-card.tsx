@@ -8,7 +8,6 @@ import React, { useState } from 'react'
 import {useDropzone} from 'react-dropzone'
 import {CircularProgressbar, buildStyles} from 'react-circular-progressbar'
 import { api } from '@/trpc/react'
-import { projectCompilationEventsSubscribe } from 'next/dist/build/swc/generated-native'
 import useProject from '@/hooks/use-project'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -45,12 +44,12 @@ const MeetingCard = () => {
                 meetingUrl: downloadUrl,
                 name: file.name
             }, {
-                onSuccess: ()=>{
+                onSuccess: (meeting)=>{
                     toast.success('Meeting uploaded successfully')
                     router.push('/meetings')
                     processMeeting.mutateAsync({
                         meetingUrl: downloadUrl,
-                        meetingId: project.id,
+                        meetingId: meeting.id,
                         projectId: project.id
                     })
                 },
