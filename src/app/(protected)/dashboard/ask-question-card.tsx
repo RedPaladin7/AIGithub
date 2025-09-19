@@ -14,9 +14,10 @@ import CodeReferences from './code-references'
 import {api} from '@/trpc/react'
 import { toast } from 'sonner'
 import useRefetch from '@/hooks/use-refetch'
+import { file } from 'zod'
 
 
-const AskQuestionClient = () => {
+const AskQuestionCard = () => {
     const {project} = useProject()
     const [question, setQuestion] = useState('')
     const [open, setOpen] = useState(false)
@@ -34,7 +35,6 @@ const AskQuestionClient = () => {
         const {output, filesReferences} = await askQuestion(question!, project.id)
         setOpen(true)
         setFilesReferences(filesReferences)
-
         for await (const delta of readStreamableValue(output)){
             if(delta){
                 setAnswer(ans => ans + delta)
@@ -54,6 +54,23 @@ const AskQuestionClient = () => {
                             <DialogTitle>
                                 <Image src='/logo.png' alt='logo' width={40} height={40}/>
                             </DialogTitle>
+                            <Button disabled={saveAnswer.isPending} variant={'outline'} onClick={()=>{
+                                saveAnswer.mutate({
+                                    projectId: project!.id,
+                                    question,
+                                    answer,
+                                    filesReferences
+                                }, {
+                                    onSuccess: ()=>{
+                                        toast.success('Answer saved!')
+                                    },
+                                    onError: ()=>{
+                                        toast.error('Failed to save answer!')
+                                    }
+                                })
+                            }}>
+                                Save Answer
+                            </Button>
                         </div>
                         <Button disabled={saveAnswer.isPending} variant={'outline'} onClick={()=>{
                             saveAnswer.mutate({
@@ -76,7 +93,7 @@ const AskQuestionClient = () => {
                     </DialogHeader>
                     <MDEditor.Markdown source={answer} className='max-w-[70vw] !h-full max-h-[40vh] overflow-scroll'/>
                     <div className='h-4'></div>
-                    <CodeReferences filesReferences={filesReferences}></CodeReferences>
+                    <CodeReferences filesReferences={filesReferences}/>
                     <Button type='button' onClick={()=>setOpen(false)}>
                         Close
                     </Button>
@@ -100,4 +117,4 @@ const AskQuestionClient = () => {
     )
 }
 
-export default AskQuestionClient
+export default AskQuestionCard
